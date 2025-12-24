@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyterhub-deployment
+  labels:
+    app: jupyterhub
+    component: frontend
+    app-version: lab4
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jupyterhub
+  template:
+    metadata:
+      labels:
+        app: jupyterhub
+        component: frontend
+        app-version: lab4
+    spec:
+      initContainers:
+        - name: config-init
+          image: busybox
+          command: ['sh', '-c', 'ls -la']
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config-dir
+
+      containers:
+        - name: jupyterhub
+          image: test_jupyter
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: password
+            - name: JUPYTERHUB_CONFIG
+              value: /etc/jupyterhub/jupyterhub_config.py
+          readinessProbe:
+            httpGet:
+              path: /hub/health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/jupyterhub
+            - name: config-volume
+              mountPath: /jupyter/init-output
+              subPath: init_message.txt
+      volumes:
+        - name: config-volume
+          configMap:
+            name: jupyterhub-config
