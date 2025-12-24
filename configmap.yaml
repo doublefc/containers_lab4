@@ -3,4 +3,28 @@ kind: ConfigMap
 metadata:
   name: jupyterhub-config
 data:
-  jupyterhub_config.py: "c.JupyterHub.bind_url = 'http://:8000'"
+  jupyterhub_config.py: |
+    import os
+    from jupyterhub.auth import Authenticator
+    
+    c.JupyterHub.bind_url = 'http://:8000'
+    db_password = os.environ.get('POSTGRES_PASSWORD', '1234')
+    c.JupyterHub.db_url = f'postgresql://postgres:{db_password}@db-service:5432/postgres'
+    
+    EXPECTED_USERNAME = os.environ.get('JUPYTER_USERNAME')
+    EXPECTED_PASSWORD = os.environ.get('JUPYTER_PASSWORD')
+
+    print(f"DEBUG: JUPYTER_USERNAME = {EXPECTED_USERNAME}")
+    print(f"DEBUG: JUPYTER_PASSWORD = {EXPECTED_PASSWORD}")
+    
+    class EnvAuthenticator(Authenticator):
+        async def authenticate(self, handler, data):
+            if not EXPECTED_USERNAME or not EXPECTED_PASSWORD:
+                return None
+            if data['username'] == EXPECTED_USERNAME and data['password'] == EXPECTED_PASSWORD:
+                return data['username']
+            return None
+    
+    c.JupyterHub.authenticator_class = EnvAuthenticator
+    c.Authenticator.admin_users = {EXPECTED_USERNAME} if EXPECTED_USERNAME else set()
+    c.LocalAuthenticator.create_system_users = True

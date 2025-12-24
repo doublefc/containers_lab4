@@ -38,6 +38,16 @@ spec:
                 secretKeyRef:
                   name: db-secret
                   key: password
+            - name: JUPYTER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: jupyter-secret
+                  key: user
+            - name: JUPYTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: jupyter-secret
+                  key: password
             - name: JUPYTERHUB_CONFIG
               value: /etc/jupyterhub/jupyterhub_config.py
           readinessProbe:
